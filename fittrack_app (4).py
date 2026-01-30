@@ -216,6 +216,168 @@ def calc_grade(score, cutoffs, reverse):
                 return 5 - i
     return 0
 
+# AI Helper Functions
+def generate_ai_response(question, user_data):
+    """Generate AI response based on user question and their data"""
+    question_lower = question.lower()
+    
+    # Analyze user data for context
+    has_napfa = len(user_data.get('napfa_history', [])) > 0
+    has_bmi = len(user_data.get('bmi_history', [])) > 0
+    has_sleep = len(user_data.get('sleep_history', [])) > 0
+    
+    # NAPFA related questions
+    if 'napfa' in question_lower or 'pull' in question_lower or 'sit up' in question_lower or 'run' in question_lower:
+        if has_napfa:
+            latest = user_data['napfa_history'][-1]
+            weak_tests = [test for test, grade in latest['grades'].items() if grade < 3]
+            if weak_tests:
+                return f"Based on your latest NAPFA test, I see you need work on: {', '.join(weak_tests)}. Check the 'Workout Recommendations' tab for specific exercises! Focus on consistency - train each weak area 3-4x per week."
+            else:
+                return f"Great NAPFA scores! Your total is {latest['total']} points. To maintain or improve: (1) Keep training all components weekly, (2) Focus on explosive power for jumps, (3) Mix steady runs with sprints, (4) Don't neglect flexibility!"
+        else:
+            return "Complete a NAPFA test first so I can give you personalized advice! Once you do, I'll analyze your weak areas and create a specific plan."
+    
+    # BMI/Weight related
+    elif 'weight' in question_lower or 'bmi' in question_lower or 'lose' in question_lower or 'gain' in question_lower:
+        if has_bmi:
+            latest_bmi = user_data['bmi_history'][-1]
+            category = latest_bmi['category']
+            if category == "Normal":
+                return f"Your BMI is {latest_bmi['bmi']} (Normal range). To maintain: eat balanced meals, exercise 4-5x/week, stay hydrated. Focus on building strength and endurance rather than weight change!"
+            elif category == "Underweight":
+                return "To gain healthy weight: (1) Eat 5-6 small meals daily, (2) Focus on protein + complex carbs, (3) Strength train 3-4x/week, (4) Drink smoothies with banana, oats, peanut butter. Check 'Meal Suggestions' for specific foods!"
+            else:
+                return "For healthy weight loss: (1) Create small calorie deficit (200-300 cal), (2) Eat lean protein + veggies each meal, (3) Do cardio 4-5x/week, (4) Avoid sugary drinks. Check 'Meal Suggestions' for detailed plan!"
+        else:
+            return "Calculate your BMI first! Then I can give you personalized nutrition and training advice for your goals."
+    
+    # Sleep related
+    elif 'sleep' in question_lower or 'tired' in question_lower or 'energy' in question_lower:
+        if has_sleep:
+            sleep_data = user_data['sleep_history']
+            avg_hours = sum([s['hours'] + s['minutes']/60 for s in sleep_data]) / len(sleep_data)
+            if avg_hours >= 8:
+                return f"Your sleep is excellent at {avg_hours:.1f} hours! Keep it consistent. If still tired: check iron levels, reduce screen time before bed, and ensure quality sleep (dark, cool room)."
+            else:
+                return f"You're averaging {avg_hours:.1f} hours - you need 8-10 hours as a teen! Tips: (1) Set bedtime alarm, (2) No screens 1hr before bed, (3) Same sleep schedule daily, (4) Avoid caffeine after 2pm. Check 'Sleep Insights' for more!"
+        else:
+            return "Track your sleep for a few days first! Then I can analyze your patterns and give specific advice. Teenagers need 8-10 hours for optimal performance and recovery."
+    
+    # Strength training
+    elif 'strength' in question_lower or 'muscle' in question_lower or 'strong' in question_lower:
+        return "To build strength: (1) Focus on compound exercises (push-ups, pull-ups, squats), (2) Progressive overload - increase difficulty weekly, (3) Eat protein after workouts, (4) Rest 48hrs between training same muscles, (5) Start with bodyweight, add resistance gradually. Check 'Custom Workout Plan' for a complete program!"
+    
+    # Cardio/Endurance
+    elif 'cardio' in question_lower or 'endurance' in question_lower or 'stamina' in question_lower:
+        return "Build endurance with: (1) Start at comfortable pace - able to talk while running, (2) Gradually increase distance by 10% weekly, (3) Mix steady runs (30-45min) with intervals (sprint 1min, jog 2min x 8), (4) Cross-train with swimming/cycling, (5) Stay hydrated! Aim for 3-4 cardio sessions weekly."
+    
+    # Diet/Nutrition
+    elif 'eat' in question_lower or 'food' in question_lower or 'diet' in question_lower or 'meal' in question_lower:
+        return "For athletic performance: (1) Eat breakfast within 1hr of waking, (2) Balance each meal: lean protein + complex carbs + vegetables, (3) Pre-workout: banana + peanut butter, (4) Post-workout: protein + carbs within 1hr, (5) Stay hydrated - 8-10 glasses daily, (6) Limit processed foods and sugar. Check 'Meal Suggestions' for specific plans!"
+    
+    # Recovery
+    elif 'recover' in question_lower or 'sore' in question_lower or 'rest' in question_lower:
+        return "Recovery is crucial! (1) Sleep 8-10 hours, (2) Eat protein within 1hr post-workout, (3) Stay hydrated, (4) Active recovery: light walk/swim on rest days, (5) Stretch daily, (6) Ice sore muscles, (7) Rest 1-2 full days/week. Muscle soreness 24-48hrs after workout is normal (DOMS)!"
+    
+    # Motivation
+    elif 'motivat' in question_lower or 'give up' in question_lower or 'hard' in question_lower:
+        return "Stay motivated! 💪 (1) Set small, achievable goals, (2) Track progress - celebrate small wins, (3) Find a workout buddy, (4) Mix up your routine to stay interested, (5) Remember your 'why', (6) Progress isn't linear - some weeks are tough, (7) Focus on how you FEEL not just numbers. You've got this!"
+    
+    # Flexibility
+    elif 'stretch' in question_lower or 'flexibility' in question_lower or 'flexib' in question_lower:
+        return "Improve flexibility: (1) Stretch AFTER workouts when muscles are warm, (2) Hold each stretch 30-60 seconds, (3) Never bounce, (4) Stretch daily - even on rest days, (5) Focus on hamstrings, hip flexors, shoulders, (6) Try yoga 1-2x/week, (7) Breathe deeply while stretching. Flexibility improves injury prevention and performance!"
+    
+    # Injury
+    elif 'injur' in question_lower or 'pain' in question_lower or 'hurt' in question_lower:
+        return "⚠️ If you have pain (not soreness): (1) STOP that activity immediately, (2) Rest and ice the area, (3) See a doctor/physiotherapist if pain persists, (4) Don't train through pain - it makes injuries worse. Prevention: warm up properly, increase intensity gradually, use proper form, rest adequately. Your health comes first!"
+    
+    # Default helpful response
+    else:
+        return "I can help with: NAPFA training, strength building, cardio/endurance, nutrition/meals, weight management, sleep optimization, recovery, flexibility, injury prevention, and motivation! Try asking about any of these topics, or check the other tabs for detailed insights based on your data. What specific aspect of fitness would you like to know about?"
+
+def generate_workout_exercises(focus, location, duration_min, fitness_level):
+    """Generate exercises based on workout parameters"""
+    exercises = []
+    
+    # Adjust sets/reps based on fitness level
+    if fitness_level == "Beginner":
+        sets, reps = 2, 10
+        rest = "60-90 seconds"
+    elif fitness_level == "Intermediate":
+        sets, reps = 3, 12
+        rest = "45-60 seconds"
+    else:  # Advanced
+        sets, reps = 4, 15
+        rest = "30-45 seconds"
+    
+    # Generate exercises based on focus
+    if focus in ["Upper Body Strength", "Strength Training"]:
+        if location == "Home (no equipment)":
+            exercises = [
+                f"Push-ups: {sets} sets x {reps} reps (rest {rest})",
+                f"Diamond push-ups: {sets} sets x {reps-5} reps",
+                f"Pike push-ups: {sets} sets x {reps-3} reps",
+                f"Tricep dips (chair): {sets} sets x {reps} reps",
+                f"Plank shoulder taps: {sets} sets x {reps*2} taps"
+            ]
+        elif location == "Gym" or location == "School":
+            exercises = [
+                f"Pull-ups/Chin-ups: {sets} sets x max reps",
+                f"Push-ups: {sets} sets x {reps+5} reps",
+                f"Dumbbell shoulder press: {sets} sets x {reps} reps",
+                f"Bent-over rows: {sets} sets x {reps} reps",
+                f"Dips: {sets} sets x {reps} reps"
+            ]
+        else:
+            exercises = [
+                f"Pull-ups (bar/tree): {sets} sets x max reps",
+                f"Push-ups: {sets} sets x {reps} reps",
+                f"Bench dips: {sets} sets x {reps} reps",
+                f"Inverted rows: {sets} sets x {reps} reps"
+            ]
+    
+    elif focus in ["Lower Body & Core", "Lower Body"]:
+        exercises = [
+            f"Squats: {sets} sets x {reps+5} reps",
+            f"Lunges: {sets} sets x {reps} reps each leg",
+            f"Glute bridges: {sets} sets x {reps+5} reps",
+            f"Calf raises: {sets} sets x {reps+10} reps",
+            f"Plank: {sets} sets x 30-60 seconds",
+            f"Russian twists: {sets} sets x {reps*2} total reps",
+            f"Bicycle crunches: {sets} sets x {reps+5} reps"
+        ]
+    
+    elif focus in ["Cardio & Endurance", "Cardio Training"]:
+        if duration_min >= 60:
+            exercises = [
+                "Running: 30 minutes steady pace",
+                "Interval sprints: 8 rounds (1 min sprint, 2 min jog)",
+                "Jump rope: 3 sets x 3 minutes",
+                "High knees: 3 sets x 1 minute",
+                "Burpees: 3 sets x 12 reps"
+            ]
+        else:
+            exercises = [
+                "Running: 15-20 minutes steady pace",
+                "Interval sprints: 6 rounds (1 min sprint, 90 sec jog)",
+                "Jumping jacks: 3 sets x 50 reps",
+                "Mountain climbers: 3 sets x 30 seconds"
+            ]
+    
+    else:  # Full Body
+        exercises = [
+            f"Squats: {sets} sets x {reps} reps",
+            f"Push-ups: {sets} sets x {reps} reps",
+            f"Lunges: {sets} sets x {reps} reps each leg",
+            f"Plank: {sets} sets x 45 seconds",
+            f"Burpees: {sets} sets x {reps-2} reps",
+            f"Sit-ups: {sets} sets x {reps+5} reps",
+            f"Jump squats: {sets} sets x {reps} reps"
+        ]
+    
+    return exercises
+
 # Login/Registration Page
 def login_page():
     st.markdown('<div class="main-header"><h1>🏋️ FitTrack</h1><p>School of Science and Technology Singapore</p><p>Your Personal Fitness Companion</p></div>', unsafe_allow_html=True)
@@ -612,7 +774,9 @@ def ai_insights():
     user_data = get_user_data()
     
     # Create tabs for different AI features
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+        "💬 AI Chat Assistant",
+        "📋 Custom Workout Plan",
         "💪 Workout Recommendations", 
         "🎯 Improvement Advice",
         "🍎 Meal Suggestions",
@@ -621,6 +785,185 @@ def ai_insights():
     ])
     
     with tab1:
+        st.subheader("💬 Chat with Your AI Fitness Assistant")
+        st.write("Ask me anything about fitness, nutrition, training, or your progress!")
+        
+        # Initialize chat history
+        if 'chat_history' not in st.session_state:
+            st.session_state.chat_history = []
+        
+        # Chat interface
+        user_question = st.text_input("Ask your question:", placeholder="e.g., How can I improve my pull-ups?", key="chat_input")
+        
+        if st.button("Send", key="send_chat"):
+            if user_question:
+                # Add user question to history
+                st.session_state.chat_history.append({"role": "user", "content": user_question})
+                
+                # Generate AI response based on user data and question
+                ai_response = generate_ai_response(user_question, user_data)
+                
+                # Add AI response to history
+                st.session_state.chat_history.append({"role": "assistant", "content": ai_response})
+        
+        # Display chat history
+        if st.session_state.chat_history:
+            st.write("---")
+            for message in st.session_state.chat_history:
+                if message["role"] == "user":
+                    st.markdown(f"**You:** {message['content']}")
+                else:
+                    st.markdown(f"**🤖 AI Coach:** {message['content']}")
+                st.write("")
+        
+        # Quick question buttons
+        st.write("---")
+        st.write("**Quick Questions:**")
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            if st.button("How to improve cardio?", key="q1"):
+                st.session_state.chat_history.append({"role": "user", "content": "How can I improve my cardio?"})
+                response = "To improve cardio: (1) Start with 20-30 min runs 3x/week, (2) Add interval training (sprint 1 min, jog 2 min), (3) Gradually increase distance by 10% weekly, (4) Mix running with swimming/cycling, (5) Track your heart rate - aim for 60-80% max HR for endurance!"
+                st.session_state.chat_history.append({"role": "assistant", "content": response})
+                st.rerun()
+        
+        with col2:
+            if st.button("Best recovery foods?", key="q2"):
+                st.session_state.chat_history.append({"role": "user", "content": "What are the best recovery foods?"})
+                response = "Best post-workout recovery foods: (1) Chocolate milk (protein + carbs), (2) Greek yogurt with berries, (3) Banana with peanut butter, (4) Grilled chicken with sweet potato, (5) Salmon with quinoa. Eat within 30-60 minutes after exercise for best recovery!"
+                st.session_state.chat_history.append({"role": "assistant", "content": response})
+                st.rerun()
+        
+        with col3:
+            if st.button("Prevent injuries?", key="q3"):
+                st.session_state.chat_history.append({"role": "user", "content": "How do I prevent injuries?"})
+                response = "Injury prevention tips: (1) Always warm up 5-10 min before exercise, (2) Cool down and stretch after workouts, (3) Increase training intensity gradually, (4) Rest at least 1-2 days/week, (5) Listen to your body - pain is a warning sign, (6) Stay hydrated, (7) Wear proper shoes for your activity!"
+                st.session_state.chat_history.append({"role": "assistant", "content": response})
+                st.rerun()
+        
+        if st.button("Clear Chat History", key="clear_chat"):
+            st.session_state.chat_history = []
+            st.rerun()
+    
+    with tab2:
+        st.subheader("📋 Generate Custom Workout Plan")
+        st.write("Get a personalized workout plan based on your schedule and goals!")
+        
+        # Workout plan preferences
+        st.write("### Your Preferences")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            days_available = st.multiselect(
+                "Available Days",
+                ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+                default=["Monday", "Wednesday", "Friday"]
+            )
+        
+        with col2:
+            session_duration = st.selectbox(
+                "Session Duration",
+                ["30 minutes", "45 minutes", "60 minutes", "90 minutes"],
+                index=2
+            )
+        
+        workout_location = st.selectbox(
+            "Workout Location",
+            ["Home (no equipment)", "Home (basic equipment)", "Gym", "Outdoor/Park", "School"]
+        )
+        
+        primary_goal = st.selectbox(
+            "Primary Goal",
+            ["Improve NAPFA scores", "Build strength", "Increase endurance", "Lose weight", "Gain muscle", "General fitness"]
+        )
+        
+        fitness_level = st.selectbox(
+            "Current Fitness Level",
+            ["Beginner", "Intermediate", "Advanced"]
+        )
+        
+        # Generate button
+        if st.button("Generate My Custom Plan", type="primary"):
+            st.write("---")
+            st.success("✅ Your Personalized Workout Plan")
+            
+            # Generate plan based on inputs
+            duration_min = int(session_duration.split()[0])
+            
+            st.write(f"**Schedule:** {len(days_available)} days per week")
+            st.write(f"**Duration:** {session_duration} per session")
+            st.write(f"**Location:** {workout_location}")
+            st.write(f"**Goal:** {primary_goal}")
+            st.write("")
+            
+            # Generate day-by-day plan
+            for idx, day in enumerate(days_available):
+                with st.expander(f"📅 {day} - {session_duration}", expanded=True):
+                    # Vary the workout focus
+                    if len(days_available) >= 4:
+                        if idx % 4 == 0:
+                            focus = "Upper Body Strength"
+                        elif idx % 4 == 1:
+                            focus = "Lower Body & Core"
+                        elif idx % 4 == 2:
+                            focus = "Cardio & Endurance"
+                        else:
+                            focus = "Full Body & Flexibility"
+                    elif len(days_available) >= 3:
+                        if idx % 3 == 0:
+                            focus = "Strength Training"
+                        elif idx % 3 == 1:
+                            focus = "Cardio Training"
+                        else:
+                            focus = "Full Body"
+                    else:
+                        focus = "Full Body Workout"
+                    
+                    st.markdown(f"**Focus:** {focus}")
+                    
+                    # Generate exercises based on location and focus
+                    exercises = generate_workout_exercises(focus, workout_location, duration_min, fitness_level)
+                    
+                    st.write("**Warm-up (5-10 min):**")
+                    st.write("- Light jogging or jumping jacks: 3 minutes")
+                    st.write("- Dynamic stretches: 5 minutes")
+                    st.write("- Arm circles, leg swings, hip rotations")
+                    
+                    st.write("")
+                    st.write("**Main Workout:**")
+                    for exercise in exercises:
+                        st.write(f"- {exercise}")
+                    
+                    st.write("")
+                    st.write("**Cool-down (5-10 min):**")
+                    st.write("- Easy walk/jog: 3 minutes")
+                    st.write("- Static stretches: Hold each 30 seconds")
+                    st.write("- Focus on muscles worked today")
+            
+            # Additional tips
+            st.write("---")
+            st.write("### 💡 Training Tips")
+            st.write("✅ **Progression:** Increase weight/reps by 5-10% every 2 weeks")
+            st.write("✅ **Rest:** Take 1-2 rest days between intense sessions")
+            st.write("✅ **Hydration:** Drink water before, during, and after workouts")
+            st.write("✅ **Nutrition:** Eat protein + carbs within 1 hour post-workout")
+            st.write("✅ **Sleep:** Get 8-10 hours for optimal recovery")
+            st.write("✅ **Listen to your body:** Rest if you feel pain (not soreness)")
+            
+            # Track in schedule
+            if st.button("💾 Save to My Schedule"):
+                for day in days_available:
+                    user_data['schedule'].append({
+                        'day': day,
+                        'activity': f"Custom Workout - {primary_goal}",
+                        'time': "To be scheduled",
+                        'duration': duration_min
+                    })
+                update_user_data(user_data)
+                st.success("✅ Workout plan saved to your Training Schedule!")
+    
+    with tab3:
         st.subheader("Personalized Workout Recommendations")
         
         if not user_data['napfa_history']:
