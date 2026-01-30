@@ -605,6 +605,402 @@ def goal_setting():
     else:
         st.info("No goals set yet.")
 
+# AI Insights and Recommendations
+def ai_insights():
+    st.header("🤖 AI Fitness Coach")
+    
+    user_data = get_user_data()
+    
+    # Create tabs for different AI features
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "💪 Workout Recommendations", 
+        "🎯 Improvement Advice",
+        "🍎 Meal Suggestions",
+        "😴 Sleep Insights",
+        "📈 Progress Predictions"
+    ])
+    
+    with tab1:
+        st.subheader("Personalized Workout Recommendations")
+        
+        if not user_data['napfa_history']:
+            st.info("📝 Complete a NAPFA test first to get personalized workout recommendations!")
+        else:
+            latest_napfa = user_data['napfa_history'][-1]
+            grades = latest_napfa['grades']
+            
+            st.write(f"**Based on your latest NAPFA test ({latest_napfa['date']}):**")
+            st.write(f"**Total Score:** {latest_napfa['total']} | **Medal:** {latest_napfa['medal']}")
+            
+            # AI-generated workout plan
+            workout_plan = []
+            
+            # Analyze each test component
+            if grades['SU'] < 3:
+                workout_plan.append({
+                    'Focus': 'Core Strength (Sit-ups)',
+                    'Exercises': 'Planks (3x30s), Bicycle crunches (3x15), Russian twists (3x20)',
+                    'Frequency': '4-5 times per week',
+                    'Tips': 'Focus on slow, controlled movements. Engage your core throughout.'
+                })
+            
+            if grades['SBJ'] < 3:
+                workout_plan.append({
+                    'Focus': 'Explosive Power (Broad Jump)',
+                    'Exercises': 'Box jumps (3x10), Squat jumps (3x12), Lunge jumps (3x10 each leg)',
+                    'Frequency': '3-4 times per week',
+                    'Tips': 'Land softly and focus on explosive power from your legs.'
+                })
+            
+            if grades['SAR'] < 3:
+                workout_plan.append({
+                    'Focus': 'Flexibility (Sit and Reach)',
+                    'Exercises': 'Hamstring stretches (hold 30s), Toe touches (3x10), Seated forward bend (hold 45s)',
+                    'Frequency': 'Daily, especially after workouts',
+                    'Tips': 'Stretch when muscles are warm. Never bounce - hold steady stretches.'
+                })
+            
+            if grades['PU'] < 3:
+                workout_plan.append({
+                    'Focus': 'Upper Body Strength (Pull-ups)',
+                    'Exercises': 'Assisted pull-ups (3x5), Negative pull-ups (3x3), Dead hangs (3x20s)',
+                    'Frequency': '3-4 times per week',
+                    'Tips': 'Build up slowly. Use resistance bands for assistance if needed.'
+                })
+            
+            if grades['SR'] < 3:
+                workout_plan.append({
+                    'Focus': 'Agility & Speed (Shuttle Run)',
+                    'Exercises': 'Ladder drills (5 mins), Cone drills (3x5), High knees (3x30s)',
+                    'Frequency': '3 times per week',
+                    'Tips': 'Focus on quick direction changes and maintaining low center of gravity.'
+                })
+            
+            if grades['RUN'] < 3:
+                workout_plan.append({
+                    'Focus': 'Endurance (2.4km Run)',
+                    'Exercises': 'Interval training (400m sprints with rest), Long slow runs (3-5km), Tempo runs',
+                    'Frequency': '4-5 times per week',
+                    'Tips': 'Build endurance gradually. Mix steady runs with interval training.'
+                })
+            
+            if workout_plan:
+                st.warning("🎯 **Areas needing improvement:**")
+                for plan in workout_plan:
+                    with st.expander(f"🏋️ {plan['Focus']}", expanded=True):
+                        st.write(f"**Exercises:** {plan['Exercises']}")
+                        st.write(f"**Frequency:** {plan['Frequency']}")
+                        st.write(f"💡 **Tips:** {plan['Tips']}")
+            else:
+                st.success("🌟 Excellent! All your NAPFA components are strong. Focus on maintaining your performance with varied workouts.")
+                st.info("**Maintenance Plan:** Mix cardio, strength training, and flexibility work 4-5 times per week to stay in top shape!")
+    
+    with tab2:
+        st.subheader("AI Improvement Advice")
+        
+        if not user_data['napfa_history']:
+            st.info("📝 Complete a NAPFA test first to get improvement advice!")
+        else:
+            latest_napfa = user_data['napfa_history'][-1]
+            grades = latest_napfa['grades']
+            
+            # Find weakest areas
+            weak_areas = [(test, grade) for test, grade in grades.items() if grade < 3]
+            strong_areas = [(test, grade) for test, grade in grades.items() if grade >= 4]
+            
+            if weak_areas:
+                st.error("⚠️ **Priority Areas for Improvement:**")
+                
+                test_names = {
+                    'SU': 'Sit-Ups',
+                    'SBJ': 'Standing Broad Jump',
+                    'SAR': 'Sit and Reach',
+                    'PU': 'Pull-Ups',
+                    'SR': 'Shuttle Run',
+                    'RUN': '2.4km Run'
+                }
+                
+                for test, grade in sorted(weak_areas, key=lambda x: x[1]):
+                    with st.expander(f"📍 {test_names[test]} (Grade {grade})"):
+                        if test == 'SU':
+                            st.write("**Why it matters:** Core strength is fundamental for all movements and injury prevention.")
+                            st.write("**Quick win:** Do 3 sets of planks daily, increasing hold time weekly.")
+                            st.write("**Long-term:** Add weighted core exercises once you reach Grade 3.")
+                        elif test == 'SBJ':
+                            st.write("**Why it matters:** Lower body power helps in sports and daily activities.")
+                            st.write("**Quick win:** Practice jump squats 3x per week, focusing on explosive power.")
+                            st.write("**Long-term:** Progressive plyometric training will significantly improve your distance.")
+                        elif test == 'SAR':
+                            st.write("**Why it matters:** Flexibility prevents injuries and improves overall mobility.")
+                            st.write("**Quick win:** Stretch hamstrings and lower back daily for 10 minutes.")
+                            st.write("**Long-term:** Consider yoga or dedicated flexibility sessions 2x per week.")
+                        elif test == 'PU':
+                            st.write("**Why it matters:** Upper body strength is crucial for overall fitness balance.")
+                            st.write("**Quick win:** Start with assisted pull-ups or negatives every other day.")
+                            st.write("**Long-term:** Gradually decrease assistance until you can do full pull-ups.")
+                        elif test == 'SR':
+                            st.write("**Why it matters:** Agility and speed are essential for sports performance.")
+                            st.write("**Quick win:** Practice quick direction changes and footwork drills 3x weekly.")
+                            st.write("**Long-term:** Join a sport that requires agility (basketball, badminton, football).")
+                        elif test == 'RUN':
+                            st.write("**Why it matters:** Cardiovascular endurance affects overall health and stamina.")
+                            st.write("**Quick win:** Run 3-4 times weekly, starting at comfortable pace and distance.")
+                            st.write("**Long-term:** Build up to 20-30km per week with mixed pace training.")
+            
+            if strong_areas:
+                st.success("💪 **Your Strengths:**")
+                for test, grade in strong_areas:
+                    st.write(f"✓ {test_names[test]}: Grade {grade} - Keep it up!")
+    
+    with tab3:
+        st.subheader("Meal Suggestions Based on Your Goals")
+        
+        if not user_data['bmi_history']:
+            st.info("📝 Calculate your BMI first to get personalized meal suggestions!")
+        else:
+            latest_bmi = user_data['bmi_history'][-1]
+            bmi_value = latest_bmi['bmi']
+            category = latest_bmi['category']
+            
+            st.write(f"**Current BMI:** {bmi_value} ({category})")
+            
+            if category == "Underweight":
+                st.warning("🍽️ **Goal: Healthy Weight Gain**")
+                
+                st.write("**Breakfast Ideas:**")
+                st.write("- Oatmeal with banana, nuts, and honey")
+                st.write("- Whole grain toast with peanut butter and scrambled eggs")
+                st.write("- Smoothie with milk, banana, oats, and protein powder")
+                
+                st.write("\n**Lunch/Dinner Ideas:**")
+                st.write("- Chicken rice with extra chicken and vegetables")
+                st.write("- Salmon with quinoa and roasted vegetables")
+                st.write("- Lean beef with sweet potato and broccoli")
+                
+                st.write("\n**Snacks:**")
+                st.write("- Trail mix (nuts, dried fruits)")
+                st.write("- Greek yogurt with granola")
+                st.write("- Whole grain crackers with cheese")
+                
+                st.info("💡 **Tips:** Eat 5-6 smaller meals, focus on nutrient-dense foods, stay hydrated!")
+                
+            elif category == "Normal":
+                st.success("🎯 **Goal: Maintain Healthy Weight**")
+                
+                st.write("**Breakfast Ideas:**")
+                st.write("- Greek yogurt with berries and granola")
+                st.write("- Whole grain toast with avocado and eggs")
+                st.write("- Smoothie bowl with fruits and nuts")
+                
+                st.write("\n**Lunch/Dinner Ideas:**")
+                st.write("- Grilled chicken with brown rice and vegetables")
+                st.write("- Fish with quinoa and salad")
+                st.write("- Tofu stir-fry with mixed vegetables")
+                
+                st.write("\n**Snacks:**")
+                st.write("- Fresh fruits (apple, orange, banana)")
+                st.write("- Vegetable sticks with hummus")
+                st.write("- A handful of almonds")
+                
+                st.info("💡 **Tips:** Balanced portions, eat colorful vegetables, stay active!")
+                
+            elif category == "Overweight" or category == "Obesity":
+                st.warning("🥗 **Goal: Healthy Weight Loss**")
+                
+                st.write("**Breakfast Ideas:**")
+                st.write("- Egg white omelette with vegetables")
+                st.write("- Oatmeal with berries (no added sugar)")
+                st.write("- Green smoothie with spinach, cucumber, apple")
+                
+                st.write("\n**Lunch/Dinner Ideas:**")
+                st.write("- Grilled fish with steamed vegetables")
+                st.write("- Chicken salad with olive oil dressing")
+                st.write("- Vegetable soup with lean protein")
+                
+                st.write("\n**Snacks:**")
+                st.write("- Carrot/cucumber sticks")
+                st.write("- Apple slices")
+                st.write("- Unsalted nuts (small portion)")
+                
+                st.info("💡 **Tips:** Portion control, avoid sugary drinks, drink water before meals, eat slowly!")
+            
+            st.write("\n---")
+            st.write("**General Nutrition Tips for Athletes:**")
+            st.write("🥤 Drink 8-10 glasses of water daily")
+            st.write("🥦 Eat vegetables with every meal")
+            st.write("🍗 Include lean protein in each meal")
+            st.write("🍚 Choose whole grains over refined carbs")
+            st.write("🚫 Limit processed foods and sugary snacks")
+    
+    with tab4:
+        st.subheader("Sleep Quality Insights")
+        
+        if not user_data['sleep_history']:
+            st.info("📝 Track your sleep first to get personalized insights!")
+        else:
+            # Analyze sleep data
+            sleep_data = user_data['sleep_history']
+            
+            if len(sleep_data) >= 3:
+                # Calculate average sleep
+                total_hours = sum([s['hours'] + s['minutes']/60 for s in sleep_data])
+                avg_hours = total_hours / len(sleep_data)
+                
+                st.metric("Average Sleep Duration", f"{avg_hours:.1f} hours")
+                
+                # Sleep quality analysis
+                excellent_count = sum(1 for s in sleep_data if s['quality'] == 'Excellent')
+                good_count = sum(1 for s in sleep_data if s['quality'] == 'Good')
+                fair_count = sum(1 for s in sleep_data if s['quality'] == 'Fair')
+                poor_count = sum(1 for s in sleep_data if s['quality'] == 'Poor')
+                
+                col1, col2, col3, col4 = st.columns(4)
+                col1.metric("Excellent", excellent_count)
+                col2.metric("Good", good_count)
+                col3.metric("Fair", fair_count)
+                col4.metric("Poor", poor_count)
+                
+                st.write("---")
+                
+                # Personalized advice
+                if avg_hours >= 8:
+                    st.success("🌟 **Excellent Sleep Habits!**")
+                    st.write("You're getting enough sleep for optimal recovery and performance.")
+                    st.write("\n**Tips to maintain:**")
+                    st.write("- Keep a consistent sleep schedule, even on weekends")
+                    st.write("- Your current routine is working - stick with it!")
+                elif avg_hours >= 7:
+                    st.info("👍 **Good Sleep Duration**")
+                    st.write("You're close to the optimal 8-10 hours for teenagers.")
+                    st.write("\n**To improve:**")
+                    st.write("- Try going to bed 15-30 minutes earlier")
+                    st.write("- Avoid screens 1 hour before bedtime")
+                    st.write("- Keep your room cool and dark")
+                elif avg_hours >= 6:
+                    st.warning("⚠️ **Sleep More for Better Performance**")
+                    st.write("You need more sleep for optimal growth and recovery.")
+                    st.write("\n**Action plan:**")
+                    st.write("- Set a bedtime alarm 30 minutes before sleep time")
+                    st.write("- Reduce afternoon caffeine")
+                    st.write("- Create a relaxing bedtime routine")
+                else:
+                    st.error("🚨 **Sleep Deficit Alert**")
+                    st.write("Insufficient sleep affects your NAPFA performance and health!")
+                    st.write("\n**Urgent actions:**")
+                    st.write("- Prioritize sleep - aim for 8+ hours")
+                    st.write("- Remove ALL screens from bedroom")
+                    st.write("- Talk to parents/guardians about better sleep schedule")
+                
+                st.write("\n---")
+                st.write("**Sleep Optimization Tips:**")
+                st.write("😴 Go to bed and wake up at the same time daily")
+                st.write("📱 No screens 1 hour before bed (blue light disrupts sleep)")
+                st.write("🏃 Exercise earlier in the day (not right before bed)")
+                st.write("☕ Avoid caffeine after 2 PM")
+                st.write("🌡️ Keep room cool (18-20°C is ideal)")
+                st.write("📚 Try reading a book before sleep")
+                st.write("🧘 Practice relaxation techniques (deep breathing)")
+            else:
+                st.info("Track your sleep for at least 3 days to get detailed insights!")
+    
+    with tab5:
+        st.subheader("Progress Predictions")
+        
+        # Check if user has goals
+        if not user_data['goals']:
+            st.info("📝 Set a goal first to get progress predictions!")
+        else:
+            st.write("**Your Goals Progress Forecast:**")
+            
+            for idx, goal in enumerate(user_data['goals']):
+                with st.expander(f"🎯 {goal['type']} - {goal['target']}", expanded=True):
+                    progress = goal['progress']
+                    target_date = datetime.strptime(goal['date'], '%Y-%m-%d')
+                    created_date = datetime.strptime(goal['created'], '%Y-%m-%d')
+                    today = datetime.now()
+                    
+                    # Calculate days
+                    days_total = (target_date - created_date).days
+                    days_passed = (today - created_date).days
+                    days_remaining = (target_date - today).days
+                    
+                    # Progress bar
+                    st.progress(progress / 100)
+                    st.write(f"**Current Progress:** {progress}%")
+                    st.write(f"**Days Remaining:** {days_remaining} days")
+                    
+                    # AI Prediction
+                    if days_passed > 0:
+                        progress_per_day = progress / days_passed
+                        predicted_progress = progress + (progress_per_day * days_remaining)
+                        
+                        if predicted_progress >= 100:
+                            days_to_complete = int((100 - progress) / progress_per_day) if progress_per_day > 0 else 999
+                            completion_date = today + timedelta(days=days_to_complete)
+                            
+                            if days_to_complete <= days_remaining:
+                                st.success(f"🎉 **On Track!** At your current pace, you'll reach your goal by {completion_date.strftime('%B %d, %Y')} ({days_to_complete} days)")
+                                st.write("Keep up the great work! 💪")
+                            else:
+                                st.info(f"📅 You'll reach your goal around {completion_date.strftime('%B %d, %Y')}")
+                                st.write("You might need a bit more time, but you're making progress!")
+                        else:
+                            st.warning(f"⚠️ **Need to Speed Up!** At your current pace, you'll reach {predicted_progress:.0f}% by the target date.")
+                            
+                            # Calculate needed pace
+                            needed_progress_per_day = (100 - progress) / days_remaining if days_remaining > 0 else 0
+                            improvement_factor = needed_progress_per_day / progress_per_day if progress_per_day > 0 else 2
+                            
+                            st.write(f"**Recommendation:** Increase your effort by {improvement_factor:.1f}x to reach your goal on time!")
+                            
+                            # Specific advice based on goal type
+                            if goal['type'] == "NAPFA Improvement":
+                                st.write("💡 **Action:** Follow your AI workout plan more consistently")
+                            elif goal['type'] == "Weight Loss" or goal['type'] == "Muscle Gain":
+                                st.write("💡 **Action:** Review your meal plan and increase workout frequency")
+                            elif goal['type'] == "Endurance":
+                                st.write("💡 **Action:** Add one more cardio session per week")
+                            elif goal['type'] == "Flexibility":
+                                st.write("💡 **Action:** Stretch daily for 15 minutes")
+                    else:
+                        st.info("Keep tracking your progress to get predictions!")
+        
+        # NAPFA predictions
+        if user_data['napfa_history'] and len(user_data['napfa_history']) >= 2:
+            st.write("\n---")
+            st.subheader("📊 NAPFA Score Trend")
+            
+            napfa_scores = [test['total'] for test in user_data['napfa_history']]
+            napfa_dates = [test['date'] for test in user_data['napfa_history']]
+            
+            # Calculate trend
+            score_diff = napfa_scores[-1] - napfa_scores[0]
+            
+            if score_diff > 0:
+                st.success(f"📈 Your NAPFA total improved by {score_diff} points!")
+                st.write(f"From {napfa_scores[0]} to {napfa_scores[-1]}")
+                
+                # Predict next score
+                if len(napfa_scores) >= 2:
+                    avg_improvement = score_diff / (len(napfa_scores) - 1)
+                    predicted_next = napfa_scores[-1] + avg_improvement
+                    
+                    st.write(f"\n**Prediction:** If you maintain this pace, your next test could be around {predicted_next:.0f} points")
+                    
+                    # Medal prediction
+                    if predicted_next >= 21:
+                        st.write("🥇 Potential Gold medal!")
+                    elif predicted_next >= 15:
+                        st.write("🥈 Potential Silver medal!")
+                    elif predicted_next >= 9:
+                        st.write("🥉 Potential Bronze medal!")
+                        
+            elif score_diff < 0:
+                st.warning(f"📉 Your score decreased by {abs(score_diff)} points")
+                st.write("**Recommendation:** Review your training plan and increase consistency")
+            else:
+                st.info("Your score stayed the same. Time to push harder!")
+
 # Schedule Manager
 def schedule_manager():
     st.header("📅 Training Schedule")
@@ -674,11 +1070,13 @@ def main_app():
     # Sidebar navigation
     st.sidebar.title("Navigation")
     page = st.sidebar.radio("Choose a feature:", 
-                           ["BMI Calculator", "NAPFA Test", "Sleep Tracker", 
+                           ["🤖 AI Insights", "BMI Calculator", "NAPFA Test", "Sleep Tracker", 
                             "Exercise Log", "Set Goals", "Training Schedule"])
     
     # Display selected page
-    if page == "BMI Calculator":
+    if page == "🤖 AI Insights":
+        ai_insights()
+    elif page == "BMI Calculator":
         bmi_calculator()
     elif page == "NAPFA Test":
         napfa_calculator()
