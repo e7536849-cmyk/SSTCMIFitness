@@ -3,8 +3,6 @@ import json
 import os
 from datetime import datetime, timedelta
 import pandas as pd
-import plotly.graph_objects as go
-import plotly.express as px
 
 # SST Color Palette
 SST_COLORS = {
@@ -312,9 +310,9 @@ def bmi_calculator():
         # Show history chart if there's data
         if len(user_data['bmi_history']) > 1:
             df = pd.DataFrame(user_data['bmi_history'])
-            fig = px.line(df, x='date', y='bmi', title='BMI History', 
-                         markers=True, color_discrete_sequence=[SST_COLORS['blue']])
-            st.plotly_chart(fig, use_container_width=True)
+            df_chart = df.set_index('date')['bmi']
+            st.subheader("BMI History")
+            st.line_chart(df_chart)
 
 # NAPFA Test Calculator
 def napfa_calculator():
@@ -502,10 +500,9 @@ def sleep_tracker():
             if len(user_data['sleep_history']) > 1:
                 df = pd.DataFrame(user_data['sleep_history'])
                 df['total_hours'] = df['hours'] + df['minutes'] / 60
-                fig = px.line(df, x='date', y='total_hours', title='Sleep Duration History', 
-                             markers=True, color_discrete_sequence=[SST_COLORS['blue']])
-                fig.update_yaxes(title_text="Hours")
-                st.plotly_chart(fig, use_container_width=True)
+                df_chart = df.set_index('date')['total_hours']
+                st.subheader("Sleep Duration History (hours)")
+                st.line_chart(df_chart)
         else:
             st.error("Please enter both sleep start and end times")
 
@@ -555,10 +552,13 @@ def exercise_logger():
             for ex in user_data['exercises']:
                 exercise_counts[ex['name']] = exercise_counts.get(ex['name'], 0) + 1
             
-            fig = px.bar(x=list(exercise_counts.keys()), y=list(exercise_counts.values()),
-                        title="Exercise Frequency", labels={'x': 'Exercise', 'y': 'Count'},
-                        color_discrete_sequence=[SST_COLORS['blue']])
-            st.plotly_chart(fig, use_container_width=True)
+            df_chart = pd.DataFrame({
+                'Exercise': list(exercise_counts.keys()),
+                'Count': list(exercise_counts.values())
+            })
+            df_chart = df_chart.set_index('Exercise')
+            st.subheader("Exercise Frequency")
+            st.bar_chart(df_chart)
     else:
         st.info("No exercises logged yet.")
 
