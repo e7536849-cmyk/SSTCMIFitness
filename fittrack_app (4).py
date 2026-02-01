@@ -493,8 +493,18 @@ def login_page():
         st.subheader("Create Account")
         new_username = st.text_input("Choose Username", key="reg_username")
         full_name = st.text_input("Full Name", key="reg_name")
-        age = st.number_input("Age", min_value=12, max_value=18, value=14, key="reg_age")
-        gender = st.selectbox("Gender", ["Male", "Female"], key="reg_gender")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            age = st.number_input("Age", min_value=12, max_value=18, value=14, key="reg_age")
+            gender = st.selectbox("Gender", ["Male", "Female"], key="reg_gender")
+        
+        with col2:
+            school = st.text_input("School (Optional)", value="School of Science and Technology", key="reg_school")
+            class_name = st.text_input("Class (Optional)", placeholder="e.g., 3-Integrity", key="reg_class")
+        
+        st.write("**Privacy Settings**")
+        show_on_leaderboards = st.checkbox("Show me on public leaderboards", value=False, key="reg_leaderboard")
         
         if st.button("Create Account", key="register_btn"):
             if not new_username or not full_name:
@@ -506,6 +516,9 @@ def login_page():
                     'name': full_name,
                     'age': age,
                     'gender': 'm' if gender == "Male" else 'f',
+                    'school': school,
+                    'class': class_name,
+                    'show_on_leaderboards': show_on_leaderboards,
                     'created': datetime.now().isoformat(),
                     'bmi_history': [],
                     'napfa_history': [],
@@ -513,7 +526,16 @@ def login_page():
                     'exercises': [],
                     'goals': [],
                     'schedule': [],
-                    'saved_workout_plan': None
+                    'saved_workout_plan': None,
+                    'friends': [],
+                    'friend_requests': [],
+                    'badges': [],
+                    'level': 'Novice',
+                    'total_points': 0,
+                    'last_login': datetime.now().isoformat(),
+                    'login_streak': 0,
+                    'active_challenges': [],
+                    'completed_challenges': []
                 }
                 save_users(st.session_state.users_data)
                 st.success("Account created! Please login.")
@@ -861,6 +883,748 @@ def goal_setting():
                 st.write(f"Progress: {goal['progress']}%")
     else:
         st.info("No goals set yet.")
+
+# Badge and Achievement System
+def check_and_award_badges(user_data):
+    """Check if user earned any new badges and award points"""
+    badges_earned = []
+    points_earned = 0
+    
+    existing_badges = [b['name'] for b in user_data.get('badges', [])]
+    
+    # NAPFA Badges
+    if user_data.get('napfa_history'):
+        latest_napfa = user_data['napfa_history'][-1]
+        
+        # First Gold Medal
+        if '🥇 First Gold' not in existing_badges and '🥇 Gold' in latest_napfa['medal']:
+            badges_earned.append({
+                'name': '🥇 First Gold',
+                'description': 'Earned your first NAPFA Gold medal!',
+                'date': datetime.now().strftime('%Y-%m-%d'),
+                'points': 100
+            })
+            points_earned += 100
+        
+        # Perfect Score
+        all_grade_5 = all(grade == 5 for grade in latest_napfa['grades'].values())
+        if '💯 Perfect Score' not in existing_badges and all_grade_5:
+            badges_earned.append({
+                'name': '💯 Perfect Score',
+                'description': 'All Grade 5s on NAPFA test!',
+                'date': datetime.now().strftime('%Y-%m-%d'),
+                'points': 200
+            })
+            points_earned += 200
+    
+    # Workout Badges
+    if user_data.get('exercises'):
+        total_workouts = len(user_data['exercises'])
+        
+        # Century Club
+        if '💪 Century Club' not in existing_badges and total_workouts >= 100:
+            badges_earned.append({
+                'name': '💪 Century Club',
+                'description': 'Completed 100 total workouts!',
+                'date': datetime.now().strftime('%Y-%m-%d'),
+                'points': 150
+            })
+            points_earned += 150
+        
+        # Fifty Strong
+        if '🏋️ Fifty Strong' not in existing_badges and total_workouts >= 50:
+            badges_earned.append({
+                'name': '🏋️ Fifty Strong',
+                'description': 'Completed 50 workouts!',
+                'date': datetime.now().strftime('%Y-%m-%d'),
+                'points': 75
+            })
+            points_earned += 75
+        
+        # Getting Started
+        if '🎯 Getting Started' not in existing_badges and total_workouts >= 10:
+            badges_earned.append({
+                'name': '🎯 Getting Started',
+                'description': 'Completed 10 workouts!',
+                'date': datetime.now().strftime('%Y-%m-%d'),
+                'points': 25
+            })
+            points_earned += 25
+        
+        # Check workout streak
+        workout_dates = sorted(list(set([e['date'] for e in user_data['exercises']])), reverse=True)
+        if len(workout_dates) >= 2:
+            streak = 1
+            current_date = datetime.strptime(workout_dates[0], '%Y-%m-%d')
+            
+            for i in range(1, len(workout_dates)):
+                prev_date = datetime.strptime(workout_dates[i], '%Y-%m-%d')
+                diff = (current_date - prev_date).days
+                
+                if diff <= 2:
+                    streak += 1
+                    current_date = prev_date
+                else:
+                    break
+            
+            # 7-day streak
+            if '🔥 Week Warrior' not in existing_badges and streak >= 7:
+                badges_earned.append({
+                    'name': '🔥 Week Warrior',
+                    'description': '7-day workout streak!',
+                    'date': datetime.now().strftime('%Y-%m-%d'),
+                    'points': 50
+                })
+                points_earned += 50
+            
+            # 30-day streak
+            if '🔥🔥 Month Master' not in existing_badges and streak >= 30:
+                badges_earned.append({
+                    'name': '🔥🔥 Month Master',
+                    'description': '30-day workout streak!',
+                    'date': datetime.now().strftime('%Y-%m-%d'),
+                    'points': 150
+                })
+                points_earned += 150
+    
+    # Sleep Badges
+    if user_data.get('sleep_history'):
+        # Check last 7 days
+        week_ago = datetime.now() - timedelta(days=7)
+        recent_sleep = [s for s in user_data['sleep_history'] 
+                       if datetime.strptime(s['date'], '%Y-%m-%d') >= week_ago]
+        
+        if len(recent_sleep) >= 7:
+            good_sleep_count = sum(1 for s in recent_sleep if s['hours'] >= 8)
+            
+            if '🌙 Sleep Champion' not in existing_badges and good_sleep_count >= 7:
+                badges_earned.append({
+                    'name': '🌙 Sleep Champion',
+                    'description': '7 days of 8+ hours sleep!',
+                    'date': datetime.now().strftime('%Y-%m-%d'),
+                    'points': 50
+                })
+                points_earned += 50
+    
+    # Goal Badges
+    if user_data.get('goals'):
+        completed_goals = sum(1 for g in user_data['goals'] if g['progress'] >= 100)
+        
+        if '🎯 Goal Crusher' not in existing_badges and completed_goals >= 5:
+            badges_earned.append({
+                'name': '🎯 Goal Crusher',
+                'description': 'Completed 5 fitness goals!',
+                'date': datetime.now().strftime('%Y-%m-%d'),
+                'points': 100
+            })
+            points_earned += 100
+        
+        if '🎯 First Goal' not in existing_badges and completed_goals >= 1:
+            badges_earned.append({
+                'name': '🎯 First Goal',
+                'description': 'Completed your first goal!',
+                'date': datetime.now().strftime('%Y-%m-%d'),
+                'points': 30
+            })
+            points_earned += 30
+    
+    # Daily Login
+    if '📅 Daily Visitor' not in existing_badges and user_data.get('login_streak', 0) >= 7:
+        badges_earned.append({
+            'name': '📅 Daily Visitor',
+            'description': '7-day login streak!',
+            'date': datetime.now().strftime('%Y-%m-%d'),
+            'points': 40
+        })
+        points_earned += 40
+    
+    return badges_earned, points_earned
+
+def calculate_level(total_points):
+    """Calculate user level based on total points"""
+    if total_points < 50:
+        return "Novice", 0, 50
+    elif total_points < 150:
+        return "Beginner", 50, 150
+    elif total_points < 300:
+        return "Intermediate", 150, 300
+    elif total_points < 500:
+        return "Advanced", 300, 500
+    elif total_points < 800:
+        return "Expert", 500, 800
+    elif total_points < 1200:
+        return "Master", 800, 1200
+    else:
+        return "Legend", 1200, 1200
+
+def update_login_streak(user_data):
+    """Update login streak for daily login tracking"""
+    last_login = user_data.get('last_login')
+    if last_login:
+        last_login_date = datetime.fromisoformat(last_login).date()
+        today = datetime.now().date()
+        days_diff = (today - last_login_date).days
+        
+        if days_diff == 1:
+            # Consecutive day
+            user_data['login_streak'] = user_data.get('login_streak', 0) + 1
+        elif days_diff == 0:
+            # Same day, no change
+            pass
+        else:
+            # Streak broken
+            user_data['login_streak'] = 1
+    else:
+        user_data['login_streak'] = 1
+    
+    user_data['last_login'] = datetime.now().isoformat()
+    return user_data
+
+# Community and Social Features
+def community_features():
+    st.header("🏆 Community & Achievements")
+    
+    user_data = get_user_data()
+    all_users = st.session_state.users_data
+    
+    # Create tabs
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "🏆 Leaderboards",
+        "🎖️ My Achievements", 
+        "👥 Friends",
+        "⚡ Challenges",
+        "⚙️ Privacy Settings"
+    ])
+    
+    with tab1:
+        st.subheader("🏆 Leaderboards")
+        
+        if not user_data.get('show_on_leaderboards', False):
+            st.warning("⚠️ You're not visible on leaderboards. Update your privacy settings to join!")
+            st.info("Go to 'Privacy Settings' tab to enable leaderboard participation.")
+        
+        # Filter users who opted in to leaderboards
+        leaderboard_users = {username: data for username, data in all_users.items() 
+                            if data.get('show_on_leaderboards', False)}
+        
+        if len(leaderboard_users) == 0:
+            st.info("No users on leaderboards yet. Be the first to opt in!")
+        else:
+            # Leaderboard selection
+            board_type = st.selectbox("Select Leaderboard", [
+                "Workout Streak",
+                "Weekly Warriors", 
+                "Age & Gender Specific",
+                "School Rankings",
+                "Class Rankings"
+            ])
+            
+            if board_type == "Workout Streak":
+                st.write("### 🔥 Longest Workout Streaks")
+                
+                streaks = []
+                for username, data in leaderboard_users.items():
+                    if data.get('exercises'):
+                        workout_dates = sorted(list(set([e['date'] for e in data['exercises']])), reverse=True)
+                        if len(workout_dates) >= 1:
+                            streak = 1
+                            current_date = datetime.strptime(workout_dates[0], '%Y-%m-%d')
+                            
+                            for i in range(1, len(workout_dates)):
+                                prev_date = datetime.strptime(workout_dates[i], '%Y-%m-%d')
+                                diff = (current_date - prev_date).days
+                                
+                                if diff <= 2:
+                                    streak += 1
+                                    current_date = prev_date
+                                else:
+                                    break
+                            
+                            streaks.append({
+                                'username': username,
+                                'name': data['name'],
+                                'streak': streak,
+                                'age': data['age'],
+                                'school': data.get('school', 'N/A')
+                            })
+                
+                streaks.sort(key=lambda x: x['streak'], reverse=True)
+                
+                for idx, user in enumerate(streaks[:10], 1):
+                    medal = "🥇" if idx == 1 else "🥈" if idx == 2 else "🥉" if idx == 3 else f"{idx}."
+                    
+                    highlight = "🌟 " if user['username'] == st.session_state.username else ""
+                    st.write(f"{medal} {highlight}**{user['name']}** (@{user['username']}) - {user['streak']} days 🔥")
+            
+            elif board_type == "Weekly Warriors":
+                st.write("### 💪 Most Workouts This Week")
+                
+                week_ago = datetime.now() - timedelta(days=7)
+                weekly_counts = []
+                
+                for username, data in leaderboard_users.items():
+                    if data.get('exercises'):
+                        weekly_workouts = [e for e in data['exercises'] 
+                                         if datetime.strptime(e['date'], '%Y-%m-%d') >= week_ago]
+                        
+                        if weekly_workouts:
+                            weekly_counts.append({
+                                'username': username,
+                                'name': data['name'],
+                                'count': len(weekly_workouts),
+                                'total_time': sum(e['duration'] for e in weekly_workouts),
+                                'school': data.get('school', 'N/A')
+                            })
+                
+                weekly_counts.sort(key=lambda x: x['count'], reverse=True)
+                
+                for idx, user in enumerate(weekly_counts[:10], 1):
+                    medal = "🥇" if idx == 1 else "🥈" if idx == 2 else "🥉" if idx == 3 else f"{idx}."
+                    highlight = "🌟 " if user['username'] == st.session_state.username else ""
+                    
+                    st.write(f"{medal} {highlight}**{user['name']}** (@{user['username']}) - {user['count']} workouts ({user['total_time']} min)")
+            
+            elif board_type == "Age & Gender Specific":
+                st.write("### 📊 Age & Gender Rankings")
+                
+                # Age and gender filters
+                col1, col2 = st.columns(2)
+                with col1:
+                    selected_age = st.selectbox("Age", list(range(12, 19)))
+                with col2:
+                    selected_gender = st.selectbox("Gender", ["Male", "Female"])
+                
+                gender_key = 'm' if selected_gender == "Male" else 'f'
+                
+                # Filter users
+                filtered_users = {username: data for username, data in leaderboard_users.items()
+                                if data['age'] == selected_age and data['gender'] == gender_key}
+                
+                if not filtered_users:
+                    st.info(f"No users in this category yet (Age {selected_age}, {selected_gender})")
+                else:
+                    # Rank by NAPFA score
+                    napfa_rankings = []
+                    for username, data in filtered_users.items():
+                        if data.get('napfa_history'):
+                            latest = data['napfa_history'][-1]
+                            napfa_rankings.append({
+                                'username': username,
+                                'name': data['name'],
+                                'score': latest['total'],
+                                'medal': latest['medal'],
+                                'school': data.get('school', 'N/A')
+                            })
+                    
+                    napfa_rankings.sort(key=lambda x: x['score'], reverse=True)
+                    
+                    st.write(f"**Top NAPFA Scores - Age {selected_age} ({selected_gender})**")
+                    for idx, user in enumerate(napfa_rankings[:10], 1):
+                        medal = "🥇" if idx == 1 else "🥈" if idx == 2 else "🥉" if idx == 3 else f"{idx}."
+                        highlight = "🌟 " if user['username'] == st.session_state.username else ""
+                        
+                        st.write(f"{medal} {highlight}**{user['name']}** (@{user['username']}) - {user['score']}/30 ({user['medal']})")
+            
+            elif board_type == "School Rankings":
+                st.write("### 🏫 School Rankings")
+                
+                # Get all schools
+                schools = list(set([data.get('school', 'N/A') for data in leaderboard_users.values()]))
+                schools = [s for s in schools if s != 'N/A' and s]
+                
+                if not schools:
+                    st.info("No schools registered yet")
+                else:
+                    school_stats = []
+                    for school in schools:
+                        school_users = {u: d for u, d in leaderboard_users.items() 
+                                      if d.get('school') == school}
+                        
+                        # Calculate average NAPFA score
+                        napfa_scores = []
+                        for data in school_users.values():
+                            if data.get('napfa_history'):
+                                napfa_scores.append(data['napfa_history'][-1]['total'])
+                        
+                        if napfa_scores:
+                            school_stats.append({
+                                'school': school,
+                                'students': len(school_users),
+                                'avg_napfa': sum(napfa_scores) / len(napfa_scores),
+                                'total_workouts': sum(len(d.get('exercises', [])) for d in school_users.values())
+                            })
+                    
+                    school_stats.sort(key=lambda x: x['avg_napfa'], reverse=True)
+                    
+                    for idx, school in enumerate(school_stats, 1):
+                        medal = "🥇" if idx == 1 else "🥈" if idx == 2 else "🥉" if idx == 3 else f"{idx}."
+                        st.write(f"{medal} **{school['school']}** - {school['avg_napfa']:.1f} avg NAPFA | {school['students']} students | {school['total_workouts']} total workouts")
+            
+            elif board_type == "Class Rankings":
+                st.write("### 📚 Class Rankings")
+                
+                # Get all classes
+                classes = list(set([data.get('class', 'N/A') for data in leaderboard_users.values()]))
+                classes = [c for c in classes if c != 'N/A' and c]
+                
+                if not classes:
+                    st.info("No classes registered yet")
+                else:
+                    class_stats = []
+                    for class_name in classes:
+                        class_users = {u: d for u, d in leaderboard_users.items() 
+                                     if d.get('class') == class_name}
+                        
+                        # Calculate stats
+                        napfa_scores = []
+                        for data in class_users.values():
+                            if data.get('napfa_history'):
+                                napfa_scores.append(data['napfa_history'][-1]['total'])
+                        
+                        if napfa_scores:
+                            class_stats.append({
+                                'class': class_name,
+                                'students': len(class_users),
+                                'avg_napfa': sum(napfa_scores) / len(napfa_scores),
+                                'total_workouts': sum(len(d.get('exercises', [])) for d in class_users.values())
+                            })
+                    
+                    class_stats.sort(key=lambda x: x['avg_napfa'], reverse=True)
+                    
+                    for idx, cls in enumerate(class_stats, 1):
+                        medal = "🥇" if idx == 1 else "🥈" if idx == 2 else "🥉" if idx == 3 else f"{idx}."
+                        st.write(f"{medal} **{cls['class']}** - {cls['avg_napfa']:.1f} avg NAPFA | {cls['students']} students | {cls['total_workouts']} total workouts")
+    
+    with tab2:
+        st.subheader("🎖️ My Achievements")
+        
+        # Check for new badges
+        new_badges, new_points = check_and_award_badges(user_data)
+        
+        if new_badges:
+            st.balloons()
+            st.success(f"🎉 You earned {len(new_badges)} new badge(s) and {new_points} points!")
+            
+            for badge in new_badges:
+                user_data['badges'].append(badge)
+                user_data['total_points'] = user_data.get('total_points', 0) + badge['points']
+            
+            update_user_data(user_data)
+        
+        # Display level and progress
+        current_level, level_min, level_max = calculate_level(user_data.get('total_points', 0))
+        user_data['level'] = current_level
+        update_user_data(user_data)
+        
+        st.write("### 📊 Your Progress")
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Level", current_level)
+        with col2:
+            st.metric("Total Points", user_data.get('total_points', 0))
+        with col3:
+            st.metric("Login Streak", f"{user_data.get('login_streak', 0)} days")
+        
+        # Progress bar to next level
+        if current_level != "Legend":
+            progress = (user_data.get('total_points', 0) - level_min) / (level_max - level_min)
+            st.progress(progress)
+            st.write(f"**Next Level:** {level_max - user_data.get('total_points', 0)} points to go!")
+        else:
+            st.success("🏆 You've reached the maximum level!")
+        
+        # Display badges
+        st.write("")
+        st.write("### 🎖️ Earned Badges")
+        
+        if user_data.get('badges'):
+            # Sort by date
+            badges = sorted(user_data['badges'], key=lambda x: x['date'], reverse=True)
+            
+            cols = st.columns(3)
+            for idx, badge in enumerate(badges):
+                with cols[idx % 3]:
+                    st.markdown(f"""
+                    <div style="background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%); 
+                                padding: 15px; border-radius: 10px; color: white; margin: 5px;">
+                        <h3>{badge['name']}</h3>
+                        <p>{badge['description']}</p>
+                        <small>Earned: {badge['date']} | +{badge['points']} pts</small>
+                    </div>
+                    """, unsafe_allow_html=True)
+        else:
+            st.info("No badges earned yet. Keep working out to unlock achievements!")
+        
+        # Available badges to earn
+        st.write("")
+        st.write("### 🎯 Available Badges")
+        
+        all_possible_badges = [
+            "🥇 First Gold - Earn your first NAPFA Gold medal",
+            "💯 Perfect Score - All Grade 5s on NAPFA",
+            "💪 Century Club - Complete 100 workouts",
+            "🏋️ Fifty Strong - Complete 50 workouts", 
+            "🎯 Getting Started - Complete 10 workouts",
+            "🔥 Week Warrior - 7-day workout streak",
+            "🔥🔥 Month Master - 30-day workout streak",
+            "🌙 Sleep Champion - 7 days of 8+ hours sleep",
+            "🎯 Goal Crusher - Complete 5 goals",
+            "🎯 First Goal - Complete your first goal",
+            "📅 Daily Visitor - 7-day login streak"
+        ]
+        
+        earned_names = [b['name'] for b in user_data.get('badges', [])]
+        remaining = [b for b in all_possible_badges if not any(name in b for name in earned_names)]
+        
+        for badge in remaining:
+            st.write(f"🔒 {badge}")
+    
+    with tab3:
+        st.subheader("👥 Friends")
+        
+        # Friend requests
+        friend_requests = user_data.get('friend_requests', [])
+        if friend_requests:
+            st.write("### 📬 Friend Requests")
+            for requester in friend_requests:
+                col1, col2, col3 = st.columns([3, 1, 1])
+                with col1:
+                    requester_data = all_users.get(requester, {})
+                    st.write(f"**{requester_data.get('name', 'Unknown')}** (@{requester})")
+                with col2:
+                    if st.button("✅ Accept", key=f"accept_{requester}"):
+                        user_data['friends'].append(requester)
+                        user_data['friend_requests'].remove(requester)
+                        
+                        # Add to requester's friends too
+                        all_users[requester]['friends'].append(st.session_state.username)
+                        
+                        update_user_data(user_data)
+                        save_users(all_users)
+                        st.success(f"Added {requester} as friend!")
+                        st.rerun()
+                with col3:
+                    if st.button("❌ Decline", key=f"decline_{requester}"):
+                        user_data['friend_requests'].remove(requester)
+                        update_user_data(user_data)
+                        st.rerun()
+        
+        # Add friend
+        st.write("### ➕ Add Friend")
+        new_friend = st.text_input("Enter username", key="add_friend_input")
+        if st.button("Send Friend Request"):
+            if new_friend in all_users:
+                if new_friend == st.session_state.username:
+                    st.error("You can't add yourself!")
+                elif new_friend in user_data.get('friends', []):
+                    st.error("Already friends!")
+                elif new_friend in all_users[new_friend].get('friend_requests', []):
+                    st.error("Request already sent!")
+                else:
+                    # Add request to target user
+                    all_users[new_friend]['friend_requests'].append(st.session_state.username)
+                    save_users(all_users)
+                    st.success(f"Friend request sent to {new_friend}!")
+            else:
+                st.error("User not found")
+        
+        # Friends list
+        st.write("### 👥 My Friends")
+        friends = user_data.get('friends', [])
+        
+        if friends:
+            for friend in friends:
+                friend_data = all_users.get(friend, {})
+                
+                with st.expander(f"👤 {friend_data.get('name', 'Unknown')} (@{friend})"):
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.write(f"**Age:** {friend_data.get('age', 'N/A')}")
+                        st.write(f"**School:** {friend_data.get('school', 'N/A')}")
+                        st.write(f"**Level:** {friend_data.get('level', 'Novice')}")
+                    
+                    with col2:
+                        if friend_data.get('napfa_history'):
+                            latest = friend_data['napfa_history'][-1]
+                            st.write(f"**NAPFA:** {latest['total']}/30")
+                            st.write(f"**Medal:** {latest['medal']}")
+                        
+                        if friend_data.get('exercises'):
+                            st.write(f"**Workouts:** {len(friend_data['exercises'])}")
+                    
+                    # Recent activity
+                    if friend_data.get('badges'):
+                        recent_badge = friend_data['badges'][-1]
+                        st.info(f"🎖️ Recently earned: {recent_badge['name']}")
+                    
+                    if st.button(f"Remove Friend", key=f"remove_{friend}"):
+                        user_data['friends'].remove(friend)
+                        all_users[friend]['friends'].remove(st.session_state.username)
+                        update_user_data(user_data)
+                        save_users(all_users)
+                        st.rerun()
+        else:
+            st.info("No friends yet. Add friends to see their progress!")
+    
+    with tab4:
+        st.subheader("⚡ Challenges")
+        
+        # Weekly Challenges
+        st.write("### 🏃 Weekly Challenges")
+        
+        # Define weekly challenges
+        weekly_challenges = [
+            {
+                'name': 'Workout Warrior',
+                'description': 'Complete 5 workouts this week',
+                'target': 5,
+                'type': 'workouts',
+                'points': 50
+            },
+            {
+                'name': 'Cardio King',
+                'description': 'Total 150 minutes of exercise this week',
+                'target': 150,
+                'type': 'minutes',
+                'points': 60
+            },
+            {
+                'name': 'Early Bird',
+                'description': 'Log 7 days of sleep tracking',
+                'target': 7,
+                'type': 'sleep',
+                'points': 40
+            }
+        ]
+        
+        # Check progress
+        week_ago = datetime.now() - timedelta(days=7)
+        
+        for challenge in weekly_challenges:
+            with st.expander(f"{'✅' if challenge['name'] in [c['name'] for c in user_data.get('completed_challenges', [])] else '⚡'} {challenge['name']} (+{challenge['points']} pts)", expanded=True):
+                st.write(f"**Goal:** {challenge['description']}")
+                
+                # Calculate progress
+                if challenge['type'] == 'workouts':
+                    weekly_workouts = [e for e in user_data.get('exercises', []) 
+                                     if datetime.strptime(e['date'], '%Y-%m-%d') >= week_ago]
+                    progress = len(weekly_workouts)
+                elif challenge['type'] == 'minutes':
+                    weekly_workouts = [e for e in user_data.get('exercises', []) 
+                                     if datetime.strptime(e['date'], '%Y-%m-%d') >= week_ago]
+                    progress = sum(e['duration'] for e in weekly_workouts)
+                else:  # sleep
+                    weekly_sleep = [s for s in user_data.get('sleep_history', []) 
+                                  if datetime.strptime(s['date'], '%Y-%m-%d') >= week_ago]
+                    progress = len(weekly_sleep)
+                
+                st.progress(min(progress / challenge['target'], 1.0))
+                st.write(f"**Progress:** {progress}/{challenge['target']}")
+                
+                if progress >= challenge['target']:
+                    completed_names = [c['name'] for c in user_data.get('completed_challenges', [])]
+                    if challenge['name'] not in completed_names:
+                        st.success("🎉 Challenge completed! Points awarded!")
+                        user_data.setdefault('completed_challenges', []).append({
+                            'name': challenge['name'],
+                            'completed_date': datetime.now().strftime('%Y-%m-%d'),
+                            'points': challenge['points']
+                        })
+                        user_data['total_points'] = user_data.get('total_points', 0) + challenge['points']
+                        update_user_data(user_data)
+        
+        # Friend Challenges
+        st.write("")
+        st.write("### 🤝 Friend Challenges")
+        
+        friends = user_data.get('friends', [])
+        if not friends:
+            st.info("Add friends to create challenges with them!")
+        else:
+            selected_friend = st.selectbox("Challenge a friend", friends)
+            
+            challenge_types = [
+                "Most workouts this week",
+                "Highest NAPFA score",
+                "Longest workout streak"
+            ]
+            
+            challenge_type = st.selectbox("Challenge type", challenge_types)
+            
+            if st.button("Send Challenge"):
+                st.success(f"Challenge sent to {selected_friend}! (Feature coming soon)")
+        
+        # Class Challenges
+        st.write("")
+        st.write("### 🏫 Class Challenges")
+        
+        if user_data.get('class'):
+            st.write(f"**Your Class:** {user_data['class']}")
+            
+            # Get class members
+            class_members = {u: d for u, d in all_users.items() 
+                           if d.get('class') == user_data['class'] and d.get('show_on_leaderboards', False)}
+            
+            if len(class_members) > 1:
+                st.write(f"**Class Members:** {len(class_members)}")
+                
+                # Show class goal
+                st.info("🎯 **Class Goal:** Average NAPFA score of 20+ by end of month!")
+                
+                # Calculate class average
+                napfa_scores = []
+                for data in class_members.values():
+                    if data.get('napfa_history'):
+                        napfa_scores.append(data['napfa_history'][-1]['total'])
+                
+                if napfa_scores:
+                    class_avg = sum(napfa_scores) / len(napfa_scores)
+                    st.metric("Current Class Average", f"{class_avg:.1f}/30")
+                    
+                    if class_avg >= 20:
+                        st.success("🎉 Class goal achieved!")
+            else:
+                st.info("Not enough class members on leaderboards yet")
+        else:
+            st.info("Set your class in Privacy Settings to join class challenges!")
+    
+    with tab5:
+        st.subheader("⚙️ Privacy Settings")
+        
+        st.write("### 👁️ Leaderboard Visibility")
+        
+        current_setting = user_data.get('show_on_leaderboards', False)
+        new_setting = st.checkbox("Show me on public leaderboards", value=current_setting)
+        
+        if new_setting != current_setting:
+            user_data['show_on_leaderboards'] = new_setting
+            update_user_data(user_data)
+            st.success("✅ Settings updated!")
+            st.rerun()
+        
+        st.info("ℹ️ When enabled, your stats will be visible on leaderboards. Your friends can always see your profile.")
+        
+        # Update school/class
+        st.write("")
+        st.write("### 🏫 School & Class")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            current_school = user_data.get('school', '')
+            new_school = st.text_input("School", value=current_school, key="update_school")
+        
+        with col2:
+            current_class = user_data.get('class', '')
+            new_class = st.text_input("Class", value=current_class, key="update_class")
+        
+        if st.button("Update School/Class Info"):
+            user_data['school'] = new_school
+            user_data['class'] = new_class
+            update_user_data(user_data)
+            st.success("✅ Updated!")
+            st.rerun()
 
 # AI Insights and Recommendations
 def ai_insights():
@@ -2264,15 +3028,21 @@ def main_app():
             st.session_state.username = None
             st.rerun()
     
+    # Update login streak
+    user_data = update_login_streak(user_data)
+    update_user_data(user_data)
+    
     # Sidebar navigation
     st.sidebar.title("Navigation")
     page = st.sidebar.radio("Choose a feature:", 
-                           ["📊 Weekly Progress", "🤖 AI Insights", "BMI Calculator", "NAPFA Test", "Sleep Tracker", 
+                           ["📊 Weekly Progress", "🏆 Community", "🤖 AI Insights", "BMI Calculator", "NAPFA Test", "Sleep Tracker", 
                             "Exercise Log", "Set Goals", "Training Schedule"])
     
     # Display selected page
     if page == "📊 Weekly Progress":
         reminders_and_progress()
+    elif page == "🏆 Community":
+        community_features()
     elif page == "🤖 AI Insights":
         ai_insights()
     elif page == "BMI Calculator":
